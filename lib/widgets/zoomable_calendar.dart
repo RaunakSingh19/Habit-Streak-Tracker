@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../screens/calendar_screen_detail.dart'; // Make sure this import is correct for your project structure
 
 enum ZoomLevel {
   year,
@@ -10,7 +11,7 @@ enum ZoomLevel {
 }
 
 class ZoomableCalendarWithStick extends StatefulWidget {
-  final Map<String, double> completionPerDay; // e.g., {"2025-06-01": 0.7}
+  final Map<String, double> completionPerDay;
   final DateTime initialMonth;
   const ZoomableCalendarWithStick({
     super.key,
@@ -48,11 +49,11 @@ class _ZoomableCalendarWithStickState extends State<ZoomableCalendarWithStick> {
     });
   }
 
-  // For year/half/quarter, group by month and show month name and date range
   List<Map<String, dynamic>> _getVisibleGroups() {
     List<Map<String, dynamic>> groups = [];
     DateTime start;
     DateTime end;
+
     if (_zoomLevel == ZoomLevel.year) {
       start = DateTime(_referenceDate.year, 1, 1);
       end = DateTime(_referenceDate.year, 12, 31);
@@ -96,7 +97,6 @@ class _ZoomableCalendarWithStickState extends State<ZoomableCalendarWithStick> {
         groups.add({"start": d, "end": d});
       }
     } else {
-      // week
       int weekday = _referenceDate.weekday;
       start = _referenceDate.subtract(Duration(days: weekday - 1));
       end = start.add(const Duration(days: 6));
@@ -108,12 +108,13 @@ class _ZoomableCalendarWithStickState extends State<ZoomableCalendarWithStick> {
   }
 
   Color getColorForPercent(double percent) {
-    if (percent < 0.5) return Colors.red;
-    if (percent < 0.6) return Colors.yellow.shade200;
-    if (percent < 0.7) return Colors.yellow.shade400;
-    if (percent < 0.8) return Colors.orange;
-    if (percent < 0.9) return Colors.lightGreen;
-    return Colors.green;
+    // Modern gradient blue-green theme
+    if (percent < 0.5) return const Color(0xFFEF476F); // pink-red
+    if (percent < 0.6) return const Color(0xFFFFA36C); // orange
+    if (percent < 0.7) return const Color(0xFFFFE066); // yellow
+    if (percent < 0.8) return const Color(0xFF06D6A0); // teal-green
+    if (percent < 0.9) return const Color(0xFF118AB2); // blue
+    return const Color(0xFF073B4C); // dark blue/green
   }
 
   double _groupCompletion(Map<String, dynamic> group) {
@@ -131,7 +132,7 @@ class _ZoomableCalendarWithStickState extends State<ZoomableCalendarWithStick> {
     return total > 0 ? sum / total : 0.0;
   }
 
-  Widget _buildZoomStick(bool isMobile) {
+  Widget _buildZoomControls(BuildContext context, bool isMobile) {
     double sliderValue;
     switch (_zoomLevel) {
       case ZoomLevel.year:
@@ -151,185 +152,348 @@ class _ZoomableCalendarWithStickState extends State<ZoomableCalendarWithStick> {
         break;
     }
 
-    return RotatedBox(
-      quarterTurns: -1,
-      child: SliderTheme(
-        data: SliderTheme.of(context).copyWith(
-          trackHeight: isMobile ? 30 : 24,
-          thumbShape: RoundSliderThumbShape(enabledThumbRadius: isMobile ? 16 : 12),
-          overlayShape: RoundSliderOverlayShape(overlayRadius: isMobile ? 22 : 18),
-        ),
-        child: Slider(
-          min: 0,
-          max: 1,
-          divisions: 4,
-          value: sliderValue,
-          onChanged: (val) {
-            double snapped = (val * 4).round() / 4.0;
-            _onZoomChanged(snapped);
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 0 : 8, vertical: isMobile ? 0 : 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!isMobile)
+            Text(
+              'Zoom Level',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF073B4C),
+              ),
+            ),
+          if (!isMobile) const SizedBox(height: 8),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: isMobile ? 24 : 20,
+              thumbShape: RoundSliderThumbShape(enabledThumbRadius: isMobile ? 12 : 10),
+              overlayShape: RoundSliderOverlayShape(overlayRadius: isMobile ? 18 : 16),
+              activeTrackColor: const Color(0xFF06D6A0),
+              inactiveTrackColor: const Color(0xFFBEE9E8),
+              thumbColor: const Color(0xFF118AB2),
+            ),
+            child: Slider(
+              min: 0,
+              max: 1,
+              divisions: 4,
+              value: sliderValue,
+              onChanged: (val) {
+                double snapped = (val * 4).round() / 4.0;
+                _onZoomChanged(snapped);
+              },
+              label: () {
+                switch (_zoomLevel) {
+                  case ZoomLevel.year:
+                    return "Year";
+                  case ZoomLevel.halfYear:
+                    return "6 Months";
+                  case ZoomLevel.quarterYear:
+                    return "Quarter";
+                  case ZoomLevel.month:
+                    return "Month";
+                  case ZoomLevel.week:
+                    return "Week";
+                }
+              }(),
+            ),
+          ),
+          if (isMobile)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Year', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: const Color(0xFF073B4C))),
+                  Text('6M', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: const Color(0xFF073B4C))),
+                  Text('Qtr', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: const Color(0xFF073B4C))),
+                  Text('Month', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: const Color(0xFF073B4C))),
+                  Text('Week', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: const Color(0xFF073B4C))),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalendarCell(Map<String, dynamic> group, bool isMobile, double cellHeight) {
+    final start = group["start"] as DateTime;
+    final end = group["end"] as DateTime;
+    final percent = _groupCompletion(group);
+    final hasData = percent > 0;
+
+    String label;
+    String subLabel = '';
+
+    if (_zoomLevel == ZoomLevel.year ||
+        _zoomLevel == ZoomLevel.halfYear ||
+        _zoomLevel == ZoomLevel.quarterYear) {
+      label = DateFormat('MMM').format(start);
+      subLabel = '${DateFormat('d').format(start)}-${DateFormat('d').format(end)}';
+    } else if (_zoomLevel == ZoomLevel.month) {
+      label = DateFormat('E').format(start);
+      subLabel = DateFormat('d').format(start);
+    } else {
+      label = DateFormat('E').format(start);
+      subLabel = DateFormat('d').format(start);
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: EdgeInsets.all(isMobile ? 2 : 4),
+      height: cellHeight,
+      constraints: BoxConstraints(
+        minHeight: 40,
+        maxHeight: cellHeight,
+        minWidth: 40,
+      ),
+      decoration: BoxDecoration(
+        color: hasData
+            ? getColorForPercent(percent)
+            : const Color(0xFFF0F4F8),
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: hasData
+            ? [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          )
+        ]
+            : null,
+        border: hasData
+            ? null
+            : Border.all(color: const Color(0xFFE0E6ED)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => CalendarDetailScreen(
+                  startDate: start,
+                  endDate: end,
+                  completionPerDay: widget.completionPerDay,
+                ),
+              ),
+            );
           },
-          label: () {
-            switch (_zoomLevel) {
-              case ZoomLevel.year:
-                return "1 Year";
-              case ZoomLevel.halfYear:
-                return "6 Months";
-              case ZoomLevel.quarterYear:
-                return "3 Months";
-              case ZoomLevel.month:
-                return "1 Month";
-              case ZoomLevel.week:
-                return "1 Week";
-            }
-          }(),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: isMobile ? 4 : 8, horizontal: 2),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: hasData ? Colors.white : const Color(0xFF073B4C),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subLabel,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: hasData
+                          ? Colors.white.withOpacity(0.95)
+                          : const Color(0xFF7B8794),
+                    ),
+                  ),
+                  if (hasData &&
+                      (_zoomLevel == ZoomLevel.month ||
+                          _zoomLevel == ZoomLevel.week))
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        '${(percent * 100).round()}%',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Colors.white.withOpacity(0.92),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _zoomLabels(bool isMobile) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        RotatedBox(quarterTurns: -1, child: Text('1 Year', style: TextStyle(fontSize: isMobile ? 14 : 12))),
-        RotatedBox(quarterTurns: -1, child: Text('6 Months', style: TextStyle(fontSize: isMobile ? 14 : 12))),
-        RotatedBox(quarterTurns: -1, child: Text('3 Months', style: TextStyle(fontSize: isMobile ? 14 : 12))),
-        RotatedBox(quarterTurns: -1, child: Text('1 Month', style: TextStyle(fontSize: isMobile ? 14 : 12))),
-        RotatedBox(quarterTurns: -1, child: Text('1 Week', style: TextStyle(fontSize: isMobile ? 14 : 12))),
-      ],
+  Widget _buildLegendItem(Color color, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(text, style: TextStyle(color: const Color(0xFF073B4C))),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final groups = _getVisibleGroups();
-    final size = MediaQuery.of(context).size;
-    final isMobile = size.width < 500;
+    final width = MediaQuery.of(context).size.width;
+    final height = MediaQuery.of(context).size.height;
+    final isMobile = width < 600;
 
-    // Layout: Horizontal grid on desktop/tablet, vertical grid on mobile
-    int crossAxisCount;
-    double cellFont = isMobile ? 18 : 14;
-    double cellHeight = isMobile ? 60 : 36;
-    double cellWidth = isMobile ? size.width * 0.8 : 80;
+    int crossAxisCount = 7;
+    double cellHeight =
+    isMobile ? (height / 12).clamp(38, 58) : (height / 14).clamp(40, 72);
 
     if (_zoomLevel == ZoomLevel.year) {
-      crossAxisCount = isMobile ? 1 : 12;
+      crossAxisCount = isMobile ? 4 : 12;
     } else if (_zoomLevel == ZoomLevel.halfYear) {
-      crossAxisCount = isMobile ? 1 : 6;
+      crossAxisCount = isMobile ? 3 : 6;
     } else if (_zoomLevel == ZoomLevel.quarterYear) {
-      crossAxisCount = isMobile ? 1 : 3;
-    } else {
-      crossAxisCount = 7;
+      crossAxisCount = isMobile ? 3 : 3;
     }
 
-    return Row(
-      children: [
-        SizedBox(
-          width: isMobile ? 50 : 60,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildZoomStick(isMobile),
-              const SizedBox(height: 12),
-              _zoomLabels(isMobile),
-            ],
-          ),
-        ),
-        Expanded(
-          child: isMobile
-              // VERTICAL LAYOUT FOR MOBILE: Use ListView with big cells
-              ? ListView.builder(
-                  scrollDirection: Axis.vertical,
-                  itemCount: groups.length,
-                  itemBuilder: (context, idx) {
-                    final group = groups[idx];
-                    final start = group["start"] as DateTime;
-                    final end = group["end"] as DateTime;
-                    final percent = _groupCompletion(group);
+    final bgColor = const Color(0xFFE6F6F8);
 
-                    String label;
-                    if (_zoomLevel == ZoomLevel.year ||
-                        _zoomLevel == ZoomLevel.halfYear ||
-                        _zoomLevel == ZoomLevel.quarterYear) {
-                      label =
-                          "${DateFormat('MMM').format(start)}\n${DateFormat('d').format(start)} - ${DateFormat('d').format(end)}";
-                    } else if (_zoomLevel == ZoomLevel.month) {
-                      label =
-                          "${DateFormat('E').format(start)}\n${DateFormat('d').format(start)}";
-                    } else {
-                      // week view
-                      label =
-                          "${DateFormat('E').format(start)}\n${DateFormat('d').format(start)}";
-                    }
-
-                    return Container(
-                      width: cellWidth,
-                      height: cellHeight,
-                      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: percent > 0
-                            ? getColorForPercent(percent)
-                            : Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: Text(
-                          label,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: cellFont, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    );
-                  },
-                )
-              // HORIZONTAL GRID FOR DESKTOP/TABLET
-              : GridView.builder(
-                  itemCount: groups.length,
+    if (isMobile) {
+      // Mobile layout - controls at bottom, grid fills available space
+      return Container(
+        color: bgColor,
+        child: Column(
+          children: [
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: GridView.builder(
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
-                    childAspectRatio: 1.8,
+                    childAspectRatio: 0.85,
                   ),
-                  itemBuilder: (context, idx) {
-                    final group = groups[idx];
-                    final start = group["start"] as DateTime;
-                    final end = group["end"] as DateTime;
-                    final percent = _groupCompletion(group);
-
-                    String label;
-                    if (_zoomLevel == ZoomLevel.year ||
-                        _zoomLevel == ZoomLevel.halfYear ||
-                        _zoomLevel == ZoomLevel.quarterYear) {
-                      label =
-                          "${DateFormat('MMM').format(start)}\n${DateFormat('d').format(start)} - ${DateFormat('d').format(end)}";
-                    } else if (_zoomLevel == ZoomLevel.month) {
-                      label =
-                          "${DateFormat('E').format(start)}\n${DateFormat('d').format(start)}";
-                    } else {
-                      // week view
-                      label =
-                          "${DateFormat('E').format(start)}\n${DateFormat('d').format(start)}";
-                    }
-
-                    return Container(
-                      margin: const EdgeInsets.all(6),
+                  itemCount: groups.length,
+                  itemBuilder: (context, index) =>
+                      _buildCalendarCell(groups[index], true, cellHeight),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(6),
+              child: _buildZoomControls(context, true),
+            ),
+            // Legend at bottom for mobile
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFBEE9E8),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 16,
+                children: [
+                  _buildLegendItem(const Color(0xFFEF476F), '0-49%'),
+                  _buildLegendItem(const Color(0xFFFFA36C), '50-59%'),
+                  _buildLegendItem(const Color(0xFFFFE066), '60-69%'),
+                  _buildLegendItem(const Color(0xFF06D6A0), '70-79%'),
+                  _buildLegendItem(const Color(0xFF118AB2), '80-89%'),
+                  _buildLegendItem(const Color(0xFF073B4C), '90-100%'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+          ],
+        ),
+      );
+    } else {
+      // Desktop/tablet layout - controls at top, legend at top right, grid is scrollable if needed
+      return Container(
+        color: bgColor,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Zoom controls
+                  Expanded(
+                    flex: 2,
+                    child: Align(
+                      alignment: Alignment.topLeft,
+                      child: _buildZoomControls(context, false),
+                    ),
+                  ),
+                  // Legend
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 6, horizontal: 14),
+                      margin: const EdgeInsets.only(left: 12),
                       decoration: BoxDecoration(
-                        color: percent > 0
-                            ? getColorForPercent(percent)
-                            : Colors.grey.shade200,
+                        color: const Color(0xFFBEE9E8),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Center(
-                        child: Text(
-                          label,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: cellFont),
-                        ),
+                      child: Wrap(
+                        alignment: WrapAlignment.start,
+                        spacing: 16,
+                        children: [
+                          _buildLegendItem(const Color(0xFFEF476F), '0-49%'),
+                          _buildLegendItem(const Color(0xFFFFA36C), '50-59%'),
+                          _buildLegendItem(const Color(0xFFFFE066), '60-69%'),
+                          _buildLegendItem(const Color(0xFF06D6A0), '70-79%'),
+                          _buildLegendItem(const Color(0xFF118AB2), '80-89%'),
+                          _buildLegendItem(const Color(0xFF073B4C), '90-100%'),
+                        ],
                       ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    int gridCount = crossAxisCount;
+                    double minCellWidth = 82;
+                    if (constraints.maxWidth / gridCount < minCellWidth) {
+                      gridCount = (constraints.maxWidth / minCellWidth)
+                          .floor()
+                          .clamp(2, crossAxisCount);
+                    }
+                    return GridView.builder(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: gridCount,
+                        childAspectRatio: 1.10,
+                      ),
+                      itemCount: groups.length,
+                      itemBuilder: (context, index) =>
+                          _buildCalendarCell(groups[index], false, cellHeight),
                     );
                   },
                 ),
+              ),
+            ),
+          ],
         ),
-      ],
-    );
+      );
+    }
   }
 }
